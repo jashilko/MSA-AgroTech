@@ -1,0 +1,31 @@
+@startuml
+!include C4_Context.puml
+
+Person(operator, "Оператор", "Следит за порядком на ферме")
+Person(vet, "Ветеринар", "Следит за здоровьем животных")
+Person(manager, "Директор", "Просматривает отчеты")
+Person(analitics, "Аналитик", "Анализирует данные")
+
+System(smp, "Система мониторинга  скота", "")
+
+System_Ext(web, "Веб-портал", "отображает данные")
+System_Ext(analitics_mod, "Аналитический модуль", "Анализирует данные")
+System_Ext(ai_mod, "Нейросеть", "Анализирует изображение")
+
+Rel(manager, web, "Просмотр отчетов")
+Rel(smp, analitics_mod, "Отправка всех данных")
+Rel(analitics_mod, operator, "Оповещает оператора")
+Rel(analitics_mod, web, "Отправляет рекомендации")
+
+Rel(web, vet, "Оповещение о состоянии здоровья")
+
+Rel(operator, web , "Управление запасами")
+
+Rel(smp, ai_mod, "Отправка данных для анализа")
+
+Rel(smp, web, "Предоставление API")
+
+
+Rel(analitics,analitics_mod,"Просмотр и добавление новых метрик")
+
+@enduml

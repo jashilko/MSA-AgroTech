@@ -1,0 +1,86 @@
+@startuml
+title Animal Monitoring — Class Diagram (Central-first)
+
+package "Animal Monitoring" {
+
+    class AnimalRulesEngine {
+        - rules: List<AnimalRule>
+        + evaluate(context: RuleEvaluationContext): List<IncidentCandidate>
+    }
+
+    interface AnimalRule {
+        + evaluate(context: RuleEvaluationContext): Optional<IncidentCandidate>
+    }
+
+    class FightDetectionRule
+    class PigletCrushingRule
+    class AbnormalBehaviorRule
+    class HealthAnomalyRule
+
+    class DetectionEvent {
+        + eventId: UUID
+        + farmId: UUID
+        + eventType: String
+        + confidence: Double
+        + timestamp: DateTime
+        + cameraId: String
+        + zoneId: String
+        + animalIds: List<UUID>
+    }
+
+    class RuleEvaluationContext {
+        + event: DetectionEvent
+        + farmConfiguration: FarmConfiguration
+        + recentEvents: List<DetectionEvent>
+        + evaluationTime: DateTime
+    }
+
+    class FarmConfiguration {
+        + farmId: UUID
+        + confidenceThresholds: Map
+        + severityPolicies: Map
+        + enabledRules: List<String>
+        + updatedAt: DateTime
+    }
+
+    class IncidentCandidate {
+        + farmId: UUID
+        + animalIds: List<UUID>
+        + incidentType: IncidentType
+        + severity: IncidentSeverity
+        + detectedAt: DateTime
+        + sourceEventId: UUID
+        + description: String
+    }
+
+    enum IncidentType {
+        FIGHT
+        PIGLET_CRUSHING
+        ABNORMAL_BEHAVIOR
+        HEALTH_ANOMALY
+    }
+
+    enum IncidentSeverity {
+        LOW
+        MEDIUM
+        HIGH
+        CRITICAL
+    }
+
+    AnimalRulesEngine o-- AnimalRule
+    FightDetectionRule ..|> AnimalRule
+    PigletCrushingRule ..|> AnimalRule
+    AbnormalBehaviorRule ..|> AnimalRule
+    HealthAnomalyRule ..|> AnimalRule
+
+    AnimalRulesEngine ..> RuleEvaluationContext
+    RuleEvaluationContext *-- DetectionEvent
+    RuleEvaluationContext *-- FarmConfiguration
+    RuleEvaluationContext ..> DetectionEvent : recent events
+
+    AnimalRulesEngine ..> IncidentCandidate
+    IncidentCandidate --> IncidentType
+    IncidentCandidate --> IncidentSeverity
+}
+
+@enduml

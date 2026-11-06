@@ -1,0 +1,114 @@
+@startuml
+!include C4_Container.puml
+
+Person(operator, "Оператор", "Работает на ферме")
+Person(vet, "Ветеринар", "Контролирует здоровье животных")
+Person(manager, "Директор", "Просматривает отчёты")
+Person(analyst, "Аналитик", "Работает с BI")
+
+System_Ext(web, "Корпоративный веб-портал", "Интерфейс пользователей")
+System_Ext(mobile, "Мобильное приложение", "Интерфейс пользователей")
+System_Ext(ai_model, "Внешняя нейромодель", "Модель партнёров, размещённая в центральном ЦОД")
+System_Ext(sms, "SMS-провайдер", "Резервные уведомления")
+System_Ext(gsm, "Локальный GSM-модем", "Резервный канал на ферме")
+System_Ext(cameras, "IP-камеры", "Видеопотоки")
+System_Ext(sensors, "Датчики фермы", "Телеметрия")
+System_Ext(controllers, "Контроллеры кормушек и поилок", "Исполнение команд")
+System_Ext(bi, "BI-система", "Power BI")
+
+System_Boundary(smp, "Система мониторинга скота") {
+
+    Container_Boundary(farm, "Ферма (Edge)") {
+        Container(iot, "IoT Gateway", "Node-RED", "Интеграция с датчиками и оборудованием")
+        Container(mqtt, "Local MQTT Broker", "Mosquitto", "Локальный обмен сообщениями")
+        Container(video_relay, "Video Stream Relay", "GStreamer / FFmpeg", "Передача видеопотоков в центральный ЦОД")
+        Container(edge_agent, "Farm Edge Agent", "Java / Spring Boot", "Буферизация телеметрии, синхронизация и получение команд")
+        ContainerDb(edge_db, "Edge Buffer", "SQLite / PostgreSQL", "Локальное хранение данных при потере связи")
+    }
+
+    Container_Boundary(central, "Центральный офис") {
+        Container(farm_integration, "Farm Integration Service", "Java / Spring Boot", "Приём данных от ферм и передача команд")
+        Container(ai_adapter, "AI Integration Service", "Java / Spring Boot", "Приём результатов видеоаналитики")
+        Container(kafka, "Message Broker", "Apache Kafka", "Центральная шина событий")
+
+        Container(animal, "Animal Monitoring", "Java / Spring Boot", "Обработка событий животных и регистрация инцидентов")
+        Container(infra, "Infrastructure Monitoring", "Java / Spring Boot", "Контроль инфраструктуры")
+        Container(feeding, "Feeding & Watering", "Java / Spring Boot", "Управление кормлением и поением")
+
+        Container(notification, "Notification Service", "Java / Spring Boot", "Доставка уведомлений операторам и ветеринарам")
+
+        Container(api, "Central API Gateway", "Spring Cloud Gateway", "Единая точка входа")
+        Container(idp, "Identity & Access", "Keycloak", "Аутентификация и авторизация")
+
+        ContainerDb(central_db, "Central DB", "PostgreSQL", "Данные ферм, события и инциденты")
+        ContainerDb(dwh, "Data Warehouse", "ClickHouse", "Исторические и агрегированные данные")
+        Container(metrics, "Metrics & Analytics", "Python / Spark", "Базовые и пользовательские метрики")
+        Container(forecast, "Feed Forecast", "Python", "Прогноз расхода кормов и запасов")
+    }
+}
+
+' Оборудование фермы
+Rel(cameras, video_relay, "Передают видеопотоки", "RTSP")
+Rel(video_relay, ai_model, "Транслирует видеопотоки", "Защищённый канал")
+Rel(cameras, iot, "Передают статусы", "ONVIF / HTTP")
+Rel(sensors, iot, "Передают телеметрию", "MQTT / протокол производителя")
+Rel(iot, mqtt, "Публикует телеметрию и статусы", "MQTT")
+Rel(mqtt, edge_agent, "Передаёт данные", "MQTT")
+
+' Локальная буферизация
+Rel(edge_agent, edge_db, "Чтение и запись буфера", "JDBC")
+Rel(edge_agent, gsm, "Резервные SMS по локально выявленным авариям", "GSM")
+
+' Синхронизация и управление
+Rel(edge_agent, farm_integration, "Передаёт телеметрию и события", "HTTPS / REST")
+Rel(farm_integration, edge_agent, "Передаёт команды и конфигурацию", "HTTPS / WebSocket")
+Rel(edge_agent, mqtt, "Публикует команды", "MQTT")
+Rel(mqtt, iot, "Передаёт команды", "MQTT")
+Rel(iot, controllers, "Управляет оборудованием", "MQTT / протокол производителя")
+
+' Центральная обработка
+Rel(ai_model, ai_adapter, "Передаёт результаты детекции", "HTTPS / JSON")
+Rel(ai_adapter, kafka, "Публикует детекции", "Kafka")
+Rel(farm_integration, central_db, "Сохраняет телеметрию", "JDBC")
+Rel(farm_integration, kafka, "Публикует события", "Kafka")
+
+Rel(kafka, animal, "События видеоаналитики", "Kafka")
+Rel(kafka, infra, "Телеметрия инфраструктуры", "Kafka")
+Rel(kafka, feeding, "События оборудования", "Kafka")
+
+Rel(animal, central_db, "Сохраняет инциденты", "JDBC")
+Rel(infra, central_db, "Сохраняет показатели", "JDBC")
+Rel(feeding, central_db, "Сохраняет данные", "JDBC")
+
+' Оповещения
+Rel(animal, notification, "Инциденты", "REST API")
+Rel(infra, notification, "Аварии", "REST API")
+Rel(feeding, notification, "Аварии", "REST API")
+Rel(notification, sms, "Отправляет SMS", "HTTPS")
+
+' Центральный интерфейс и безопасность
+Rel(operator, web, "Управление и мониторинг", "HTTPS")
+Rel(vet, web, "Просмотр состояния животных", "HTTPS")
+Rel(manager, web, "Просмотр отчётов", "HTTPS")
+Rel(analyst, bi, "Анализ данных")
+
+Rel(web, api, "Запросы", "HTTPS / REST")
+Rel(mobile, api, "Запросы", "HTTPS / REST")
+Rel(api, idp, "Аутентификация и проверка токенов", "OIDC")
+
+Rel(api, animal, "Запросы", "REST")
+Rel(api, infra, "Запросы", "REST")
+Rel(api, feeding, "Команды управления", "REST")
+Rel(api, metrics, "Запросы метрик", "REST")
+Rel(api, forecast, "Запросы прогнозов", "REST")
+Rel(api, notification, "Получение уведомлений", "REST")
+Rel(notification, api, "Push-уведомления", "WebSocket")
+
+' Аналитика
+Rel(central_db, dwh, "Передача данных", "CDC / ETL")
+Rel(dwh, metrics, "Исторические данные", "SQL")
+Rel(dwh, forecast, "История запасов и расхода", "SQL")
+Rel(forecast, dwh, "Сохранение прогнозов", "SQL")
+Rel(metrics, bi, "Передача метрик", "API / ODBC")
+
+@enduml

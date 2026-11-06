@@ -1,0 +1,93 @@
+@startuml
+!include C4_Container.puml
+
+Person(manager, "Директор", "Просматривает отчеты")
+Person(аналитик, "Аналитик", "Работа с BI-системой")
+
+
+
+
+System_Boundary(office, "Центральный офис"){
+    System_Ext(web, "Веб-портал", "отображает данные")
+    System_Ext(mobile, "Мобильное приложение", "Отображает данные")
+    
+    Container(ingestion_service, "Сервер синхронизации данных", "Java", "Принимает  данные с ферм")
+    Container(api_central, " Центральное API + Gateway", "Java", "")
+    Container(identify, "Identify and Access", "Keycloak", "Идентификация и права доступа, роли")
+
+Container_Boundary(office_analitics, "Центральная аналитика"){
+    Container(food_analitics, "Предсказание запасов еды", "Python", "")
+    System_Ext(аналитика, "Аналитический модуль", "Python+Spark", "Анализ")
+    ContainerDb_Ext(dwh, "Data Warehouse", "ClickHouse", "Структурированные данные")
+    System_Ext(bi, "BI система", "Power BI", "Отчеты")
+    
+    }
+}
+
+System_Boundary(farm, "Ферма") {
+Container_Boundary(Животноводческие_помещения, "животноводческие_помещения"){
+        System_Ext(cameras, "IP-камеры", "Видеопотоки")
+        System_Ext(sensors, "Датчики фермы", "Уровень еды и воды, качество воды")
+        System_Ext(controllers, "Контроллеры оборудования", "Наполнение кормушек и поилок")
+}
+    Person(operator, "Дежурный оператор", "Следит за порядком на ферме")
+    Person(vet, "Ветеринар на ферме", "Следит за здоровьем животных")
+    Container(iot, "IoT шлюз", "Node-RED", "Взаимодействие с различными девайсами")
+    Container_Ext(ai_video, "Ext-AI", "", "Нейросеть анализирующая видео")
+    Container(kafka, "Брокер сообщений", "Apache Kafka", "Шина данных")
+    Container(animal_controller, "Animal Controller", "Java", "Контроллер животных")
+    Container(infrastructure_controller, "Infrastucture Controller", "Java", "Контроллер инфраструктуры")
+    ContainerDb(localdb, "localdb", "PostgreSQL", "Локальная БД")
+    Container(notification, "Notification", "Java", "Сервис оповещений")
+    System_Ext(sms, "SMS_шлюз")
+    Container(sync_agent, "Сервис синхронизации", "Java", "Синхронизация с центральным сервером")   
+    Container(web_portal_api, "WebUI + API", "FastAPI, React", "Локальный портал фермы")
+}
+Rel(cameras, ai_video, "Передают видеопоток", "RTSP")
+Rel(cameras, iot, "Статусы", "MQTT")
+Rel(sensors, iot, "Данные, статусы", "MQTT")
+Rel(iot, controllers, "Команды", "MQTT")
+
+Rel(iot, kafka, "События", "Kafka protocol")
+Rel(ai_video, kafka, "Детекции", "Kafka protocol")
+
+Rel(kafka, animal_controller, "Читает", "Kafka protocol")
+Rel(kafka, infrastructure_controller, "Читает", "Kafka protocol")
+
+Rel(infrastructure_controller, localdb, "Сохранить", "jdbc")
+Rel(animal_controller, localdb, "Сохранить", "jdbc")
+
+Rel(infrastructure_controller, notification, "Авария", "REST  API")
+Rel(animal_controller, notification, "Инцидент", "REST API")
+Rel(notification, sms, "Оповещение", "")
+
+Rel(localdb, sync_agent, "Синхронизация", "jdbc")
+Rel(sync_agent, ingestion_service, "Синхронизация", "REST API")
+Rel(ingestion_service, dwh, "Публикует", "")
+
+Rel(operator, web_portal_api, "", "https")
+Rel(vet, web_portal_api, "", "https")
+Rel(web_portal_api, infrastructure_controller, "Команды", "REST API")
+Rel(infrastructure_controller, iot, "Команды", "")
+
+Rel(sms, vet, "Инцидент с животными", "")
+Rel(sms, operator, "Авария на ферме", "")
+Rel(notification, web_portal_api, "Оповещения через портал", "Web Socket")
+
+'Переиспользуем
+Rel(аналитик, bi, "Создание и просмотр отчетов")
+Rel(dwh, аналитика, "Доступ к структурированным данным", "SQL")
+Rel(аналитика, bi, "Передает отчеты", "ODBC")
+Rel(manager, web, "", "https")
+Rel(manager, mobile, "", "https")
+Rel(web, api_central, "", "")
+Rel(mobile, api_central, "", "")
+
+Rel(dwh, food_analitics, "", "")
+Rel(api_central, аналитика, "", "")
+Rel(api_central, identify, "", "OAuth 2.0")
+Rel(identify, ingestion_service, "Передает ключи идентификации", "JWT")
+
+
+
+@enduml

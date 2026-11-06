@@ -1,0 +1,33 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_TOP_DOWN()
+
+Container_Ext(kafka, "Брокер сообщений", "Apache Kafka", "Передаёт события видеоаналитики")
+ContainerDb_Ext(central_db, "Central DB", "PostgreSQL", "Данные ферм, события и инциденты")
+Container_Ext(notification, "Notification Service", "Java / Spring Boot", "Доставка уведомлений")
+Container_Ext(central_api, "Central API Gateway", "Spring Cloud Gateway", "Единая точка входа")
+
+Container_Boundary(animal_controller, "Animal Controller (Java / Spring Boot)") {
+
+    Component(consumer, "Detection Consumer", "Spring Kafka", "Получает события видеоаналитики из Kafka")
+    Component(event_mapper, "Detection Event Handler", "Java", "Проверяет и преобразует события в формат системы")
+    Component(rules, "Animal Rules Engine", "Java", "Применяет бизнес-правила и определяет критичность инцидента")
+    Component(incident_service, "Incident Management", "Java", "Регистрирует инциденты и управляет их состояниями")
+    Component(repository, "Animal Repository", "Spring Data JPA", "Сохраняет и получает данные")
+    Component(api, "Animal REST API", "Spring MVC", "Предоставляет данные о животных и инцидентах")
+    Component(notification_client, "Notification Client", "Spring WebClient", "Передаёт команды на отправку уведомлений")
+}
+Rel(kafka, consumer, "События видеоаналитики", "Kafka")
+Rel(consumer, event_mapper, "Передаёт полученные события")
+Rel(event_mapper, rules, "Передаёт нормализованные события")
+Rel(rules, incident_service, "Передаёт выявленные инциденты")
+Rel(incident_service, repository, "Сохраняет и получает данные")
+Rel(repository, central_db, "Чтение и запись", "JDBC")
+
+Rel(incident_service, notification_client, "Запрашивает оповещение")
+Rel(notification_client, notification, "Отправляет команду", "REST / HTTPS")
+
+Rel(central_api, api, "Запрашивает данные", "REST / HTTPS")
+Rel(api, incident_service, "Получает данные об инцидентах")
+
+@enduml

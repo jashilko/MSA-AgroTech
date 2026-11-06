@@ -1,0 +1,62 @@
+@startuml
+title C4 — Animal Rules Engine
+
+package "Animal Rules Engine" {
+
+    class AnimalRulesEngine {
+        - rules: List<AnimalRule>
+        + evaluate(event: DetectionEvent): List<IncidentCandidate>
+    }
+
+    interface AnimalRule {
+        + evaluate(event: DetectionEvent): Optional<IncidentCandidate>
+    }
+
+    class FightDetectionRule
+    class PigletCrushingRule
+    class AbnormalBehaviorRule
+    class HealthAnomalyRule
+
+    class DetectionEvent {
+        + animalId: String
+        + eventType: String
+        + confidence: Double
+        + timestamp: DateTime
+        + metadata: Map
+    }
+
+    class IncidentCandidate {
+        + animalId: String
+        + incidentType: IncidentType
+        + severity: IncidentSeverity
+        + description: String
+        + detectedAt: DateTime
+    }
+
+    enum IncidentType {
+        FIGHT
+        PIGLET_CRUSHING
+        ABNORMAL_BEHAVIOR
+        HEALTH_ANOMALY
+    }
+
+    enum IncidentSeverity {
+        LOW
+        MEDIUM
+        HIGH
+        CRITICAL
+    }
+
+    AnimalRulesEngine o-- AnimalRule
+    FightDetectionRule ..|> AnimalRule
+    PigletCrushingRule ..|> AnimalRule
+    AbnormalBehaviorRule ..|> AnimalRule
+    HealthAnomalyRule ..|> AnimalRule
+
+    AnimalRulesEngine ..> DetectionEvent
+    AnimalRulesEngine ..> IncidentCandidate
+    IncidentCandidate --> IncidentType
+    IncidentCandidate --> IncidentSeverity
+}
+
+@enduml
